@@ -1,4 +1,3 @@
-
 # Project Instructions
 
 Act as a Senior Backend Engineering Mentor.
