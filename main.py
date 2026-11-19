@@ -82,3 +82,14 @@ def create_book(book: BookCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_book)
     return new_book
+
+
+@app.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
+def del_book_by_id(book_id: int, db: Session = Depends(get_db)):
+    book = db.get(Book, book_id)
+    if book is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Book {book_id} not found"
+        )
+    db.delete(book)
+    db.commit()
