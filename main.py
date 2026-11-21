@@ -1,3 +1,5 @@
+from os import stat
+
 from fastapi import FastAPI, HTTPException, status
 from starlette.status import HTTP_201_CREATED
 from schemas import AuthorCreate, BookCreate
@@ -84,6 +86,7 @@ def create_book(book: BookCreate, db: Session = Depends(get_db)):
     return new_book
 
 
+# DELETE
 @app.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
 def del_book_by_id(book_id: int, db: Session = Depends(get_db)):
     book = db.get(Book, book_id)
@@ -93,3 +96,27 @@ def del_book_by_id(book_id: int, db: Session = Depends(get_db)):
         )
     db.delete(book)
     db.commit()
+
+
+# PUT
+@app.put("/books/{book_id}", response_model=BookResponse)
+def update_book(book_id: int, data: BookCreate, db: Session = Depends(get_db)):
+    book = db.get(Book, book_id)
+    if book is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Book {book_id} not found"
+        )
+    if db.get(Author, data.author_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Author {data.author_id} not found",
+        )
+
+    book.title = data.title
+    book.pages = data.pages
+    book.published_year = data.published_year
+    book.author_id = data.author_id
+
+    db.commit()
+    db.refresh(book)
+    return book
