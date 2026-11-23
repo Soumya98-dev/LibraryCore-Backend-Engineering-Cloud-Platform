@@ -98,6 +98,24 @@ def del_book_by_id(book_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
+@app.delete("/authors/{author_id}", status_code=status.HTTP_204_NO_CONTENT)
+def del_author_by_id(author_id: int, db: Session = Depends(get_db)):
+    author = db.get(Author, author_id)
+    if author is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Author {author_id} not found",
+        )
+    if author.books:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Books with the Author {author_id} is there",
+        )
+    else:
+        db.delete(author)
+        db.commit()
+
+
 # PUT
 @app.put("/books/{book_id}", response_model=BookResponse)
 def update_book(book_id: int, data: BookCreate, db: Session = Depends(get_db)):
@@ -120,3 +138,19 @@ def update_book(book_id: int, data: BookCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(book)
     return book
+
+
+@app.put("/authors/{author_id}", response_model=AuthorResponse)
+def update_author(author_id: int, data: AuthorCreate, db: Session = Depends(get_db)):
+    author = db.get(Author, author_id)
+    if author is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Author {author_id} not found",
+        )
+    author.name = data.name
+    author.country = data.country
+
+    db.commit()
+    db.refresh(author)
+    return author
