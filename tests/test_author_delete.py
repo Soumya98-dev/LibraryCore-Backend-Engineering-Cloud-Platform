@@ -1,12 +1,38 @@
 from fastapi.testclient import TestClient
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm.session import sessionmaker
+from database import Base, get_db
 
 
-def test_cannot_delete_author_with_books(tmp_path, monkeypatch):
+# pytest fixture with a FastAPI dependency override
+@pytest.fixture
+def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     from main import app
 
-    # Author Insert testing
-    client = TestClient(app)
+    engine = create_engine(
+        f"sqlite:///{tmp_path/'test.db'}", connect_args={"check_same_thread": False}
+    )
+    Base.metadata.create_all(bind=engine)
+
+    TestSessionLocal = sessionmaker(autoflush=False, bind=engine)
+
+    def override_get_db():
+        with TestSessionLocal() as db:
+            yield db
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        engine.dispose()
+
+
+# API Integration Test
+def test_cannot_delete_author_with_books(client):
     response = client.post(
         "/authors",
         json={"name": "Mira Vale", "country": "India"},
